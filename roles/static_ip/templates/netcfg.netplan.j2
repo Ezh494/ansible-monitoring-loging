@@ -1,0 +1,15 @@
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    eth0:
+      dhcp4: no
+      dhcp6: no
+      addresses:
+      - {{ host_address }}
+      gateway4: {{ ansible_default_ipv4.gateway|default(ipv4_default_gateway.stdout) }}
+      nameservers:
+        addresses:
+{% for host_nameserver in host_nameservers %}
+        - {{ host_nameserver }}
+{% endfor %}

@@ -1,0 +1,14 @@
+- name: Start and enable node_exporter
+  ansible.builtin.service:
+    name: node_exporter.service
+    state: started
+    enabled: yes
+
+- name: Restart node_exporter
+  ansible.builtin.service:
+    name: node_exporter.service
+    state: restarted
+
+- name: Daemon reload
+  ansible.builtin.systemd:
+    daemon_reload: true

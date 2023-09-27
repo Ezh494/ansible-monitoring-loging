@@ -1,0 +1,36 @@
+- name: Start and enable elasticsearch
+  ansible.builtin.service:
+    name: elasticsearch.service
+    state: started
+    enabled: yes
+
+- name: Restart elasticsearch
+  ansible.builtin.service:
+    name: elasticsearch.service
+    state: restarted
+
+- name: Start and enable kibana
+  ansible.builtin.service:
+    name: kibana.service
+    state: started
+    enabled: yes
+
+- name: Restart kibana
+  ansible.builtin.service:
+    name: kibana.service
+    state: restarted
+
+- name: Start and enable nginx
+  ansible.builtin.service:
+    name: nginx.service
+    state: started
+    enabled: yes
+
+- name: Restart nginx
+  ansible.builtin.service:
+    name: nginx.service
+    state: restarted
+
+- name: Daemon reload
+  ansible.builtin.systemd:
+    daemon_reload: true

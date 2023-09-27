@@ -1,0 +1,29 @@
+- name: 'Prepare servers'
+  hosts: prometheus:grafana:elasticsearch:kibana
+  become: true
+  roles:
+    - static_ip
+
+- name: 'Install prometheus/alertmanager and grafana'
+  hosts: prometheus:grafana
+  become: true
+  roles:
+    - prometheus
+    
+- name: 'Install Elasticsearch and kibana'
+  hosts: elasticsearch:kibana
+  become: true
+  roles:
+    - ES-kibana
+   
+- name: 'Install node_exporter'
+  hosts: node_exporter
+  become: true
+  roles:
+    - node_exporter
+    
+- name: 'Install Fluent-Bit'
+  hosts: fluent-bit
+  become: true
+  roles:
+    - fluent-bit

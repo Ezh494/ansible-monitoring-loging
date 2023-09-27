@@ -1,0 +1,22 @@
+{% if alertmanager_global != [] -%}
+global:
+  {{ alertmanager_global }}
+{% endif -%}
+
+{% if alertmanager_templates != [] -%}
+templates:
+{{ alertmanager_templates | to_nice_yaml(indent=2) | indent(2,False) }}
+{% endif -%}
+
+route:
+  group_by: {{ alertmanager_group_by }}
+  group_wait: {{ alertmanager_group_wait }}
+  group_interval: {{ alertmanager_group_interval }}
+  repeat_interval: {{ alertmanager_repeat_interval }}
+  receiver: {{ alertmanager_receiver }}
+
+receivers:
+  {{ alertmanager_receivers | to_nice_yaml(indent=2) | indent(2,False) }}
+
+inhibit_rules:
+  {{ alertmanager_inhibit_rules | to_nice_yaml(indent=2) | indent(2,False) -}}

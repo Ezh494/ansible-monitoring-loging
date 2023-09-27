@@ -1,0 +1,32 @@
+# my global config
+global:
+  scrape_interval: {{ prometheus_scrape_interval }}
+  evaluation_interval: {{ prometheus_evaluation_interval }}
+  scrape_timeout: {{ prometheus_scrape_timeout }}
+
+{% if prometheus_remote_write != [] %}
+remote_write:
+  {{ prometheus_remote_write | to_nice_yaml(indent=2) | indent(2, False) }}
+{% endif -%}
+
+{% if prometheus_remote_read != [] %}
+remote_read:
+  {{ prometheus_remote_read | to_nice_yaml(indent=2) | indent(2, False) }}
+{% endif -%}
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            {{ prometheus_alertmanager_target }}
+
+# Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+rule_files:
+{%- if prometheus_rule_files != [] %}
+  {{ prometheus_rule_files | to_nice_yaml(indent=2) | indent(2,False) -}}
+{% endif %}  
+
+# A scrape configuration containing exactly one endpoint to scrape:
+scrape_configs:
+  {{ prometheus_scrape_configs | to_nice_yaml(indent=2) | indent(2,False) }}

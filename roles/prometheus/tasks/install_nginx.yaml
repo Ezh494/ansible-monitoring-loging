@@ -1,0 +1,121 @@
+- name: Check nginx.service exists
+  stat:
+    path: /lib/systemd/system/nginx.service
+  register: nginx_result
+
+- name: Install prerequsites
+  ansible.builtin.apt:
+   name: "{{ item }}"
+   state: present
+   update_cache: yes
+  with_items:
+  - curl
+  - gnupg2
+  - ca-certificates
+  - lsb-release
+  - ubuntu-keyring
+  when: not nginx_result.stat.exists
+
+- name: Import the Nginx signing key
+  shell: wget -O- https://nginx.org/keys/nginx_signing.key | gpg --dearmor | tee /etc/apt/trusted.gpg.d/nginx.gpg > /dev/null
+  when: not nginx_result.stat.exists
+
+- name: Create a directory /root/.gnupg
+  ansible.builtin.file:
+    path: /root/.gnupg
+    state: directory
+    owner: root
+    group: root
+    mode: '0600'
+  when: not nginx_result.stat.exists
+
+- name: Get verify gpg key
+  shell: gpg --dry-run --quiet --import --import-options import-show /etc/apt/trusted.gpg.d/nginx.gpg
+  register: GPG_keys
+  when: not nginx_result.stat.exists
+
+- name: Show verify gpg key
+  debug:
+    msg: "{{ GPG_keys.stdout }}"
+  when: not nginx_result.stat.exists
+
+- name: Add latest stable repository NGINX
+  shell: echo "deb http://nginx.org/packages/ubuntu `lsb_release -cs` nginx" | tee /etc/apt/sources.list.d/nginx.list
+  when: not nginx_result.stat.exists
+
+- name: Install nginx
+  ansible.builtin.apt:
+   name: "nginx-core={{ prometheus_nginx_version|default(alertmanager_nginx_version) }}*"
+   state: present
+   update_cache: yes
+  notify: 
+  - Daemon reload
+  - Start and enable nginx
+  when: not nginx_result.stat.exists
+
+- name: flush handlers
+  ansible.builtin.meta: flush_handlers
+  when: not nginx_result.stat.exists
+
+- name: "Add prometheus nginx config"
+  ansible.builtin.template:
+    src: prometheus.nginx.conf.j2
+    dest: /etc/nginx/sites-available/prometheus.conf
+    owner: root
+    group: root
+    mode: 0644
+  when: 
+  - prometheus_nginx_install == true
+
+- name: Creating a symlink prometheus nginx config
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/prometheus.conf
+    dest: /etc/nginx/sites-enabled/prometheus
+    state: link
+  when: 
+  - prometheus_nginx_install == true
+  notify: 
+  - Restart nginx
+
+- name: "Add alertmanager nginx config"
+  ansible.builtin.template:
+    src: alertmanager.nginx.conf.j2
+    dest: /etc/nginx/sites-available/alertmanager.conf
+    owner: root
+    group: root
+    mode: 0644
+  when: 
+  - alertmanager_nginx_install == true
+
+- name: Creating a symlink alertmanager nginx config
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/alertmanager.conf
+    dest: /etc/nginx/sites-enabled/alertmanager
+    state: link
+  when: 
+  - alertmanager_nginx_install == true
+  notify: 
+  - Restart nginx
+
+- name: "Add grafana nginx config"
+  ansible.builtin.template:
+    src: grafana.nginx.conf.j2
+    dest: /etc/nginx/sites-available/grafana.conf
+    owner: root
+    group: root
+    mode: 0644
+  when: 
+  - grafana_nginx_install == true
+
+- name: Creating a symlink grafana nginx config
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/grafana.conf
+    dest: /etc/nginx/sites-enabled/grafana
+    state: link
+  when: 
+  - grafana_nginx_install == true
+  notify: 
+  - Restart nginx
+
+- name: flush handlers
+  ansible.builtin.meta: flush_handlers

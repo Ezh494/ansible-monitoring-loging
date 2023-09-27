@@ -1,0 +1,7 @@
+apiVersion: 1
+datasources:
+  - name: Prometheus-server
+    type: prometheus
+    url: http://{{ prometheus_nginx_domain }}
+    access: proxy
+    isDefault: true

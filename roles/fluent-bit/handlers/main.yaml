@@ -1,0 +1,14 @@
+- name: Start and enable fluent-bit
+  ansible.builtin.service:
+    name: fluent-bit.service
+    state: started
+    enabled: yes
+
+- name: Restart fluent-bit
+  ansible.builtin.service:
+    name: fluent-bit.service
+    state: restarted
+
+- name: Daemon reload
+  ansible.builtin.systemd:
+    daemon_reload: true

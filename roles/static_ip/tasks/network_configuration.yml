@@ -1,0 +1,40 @@
+  - name: Print ip address
+    ansible.builtin.debug:
+      msg: "{{ ansible_default_ipv4.address|default(ansible_all_ipv4_addresses[0]) }}"
+
+  - name: Get gateway
+    shell: ip r | grep default | awk '{ print $3}'
+    register: ipv4_default_gateway
+
+  - name: Set ip/prefix fact
+    set_fact:
+      host_address: "{{ (ansible_default_ipv4.address|default(ansible_all_ipv4_addresses[0]) + '/' + ansible_default_ipv4.netmask|default(ansible_eth0.ipv4.netmask)) | ipaddr('address/prefix') }}"
+
+  - name: Set nameserver fact
+    set_fact:
+      host_nameservers: "{{ global_nameservers }}"
+    when: "'192.168.' in (ansible_default_ipv4.network|default(ipv4_default_gateway.stdout))"
+
+  - name: Set nameserver fact
+    set_fact:
+      host_nameservers: "{{ office_nameservers }}"
+    when: "'10.' in (ansible_default_ipv4.network|default(ipv4_default_gateway.stdout))"
+
+  - name: Print static apply configuration
+    ansible.builtin.debug:
+      msg:
+      - "Static network configuration"
+      - "IP address: {{ host_address }}"
+      - "Gateway: {{ ansible_default_ipv4.gateway|default(ipv4_default_gateway.stdout) }}"
+      - "DNS: {{ host_nameservers }}"
+
+  - name: Copy service file
+    ansible.builtin.template:
+      src: netcfg.netplan.j2
+      dest: /etc/netplan/50-cloud-init.yaml
+      owner: root
+      group: root
+      mode: 0644
+
+  - name: start netplan
+    shell: netplan apply

@@ -1,0 +1,14 @@
+## elasticsearch values
+elasticsearch_version: 8.10.2
+elasticsearch_cluster: false
+elasticsearch_cluster_name: test-elasticsearch-sa
+elasticsearch_cluster_address: 127.0.0.1
+elasticsearch_nginx_domain: elasticsearch.test.co
+
+## Kibana values
+kibana_version: 8.10.2
+kibana_update: false
+kibana_nginx_install: true
+kibana_nginx_version: 1.18.0
+kibana_nginx_domain: kibana.test.co
+kibana_server_name: test-kibana

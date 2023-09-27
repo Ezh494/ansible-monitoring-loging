@@ -1,0 +1,90 @@
+- name: Create group "prometheus"
+  ansible.builtin.group:
+    name: prometheus
+    state: present
+    system: true
+
+- name: "Create user prometheus"
+  ansible.builtin.user:
+    name: prometheus
+    create_home: false
+    system: true
+    shell: /sbin/nologin
+    groups: prometheus
+    state: present
+
+- name: Create a directory /etc/prometheus
+  ansible.builtin.file:
+    path: /etc/prometheus
+    state: directory
+    owner: prometheus
+    group: prometheus
+    mode: '0774'
+    
+- name: Create a directory /var/lib/prometheus
+  ansible.builtin.file:
+    path: /var/lib/prometheus
+    state: directory
+    owner: prometheus
+    group: prometheus
+    mode: '0770'
+
+- name: Get and unarchive prometheus package
+  ansible.builtin.unarchive:
+    src: "https://github.com/prometheus/prometheus/releases/download/v{{ prometheus_version }}/prometheus-{{ prometheus_version }}.linux-amd64.tar.gz"
+    dest: /tmp
+    remote_src: yes
+
+- name: Copy bin prometheus
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: /usr/local/bin/
+    remote_src: yes
+    owner: prometheus
+    group: prometheus
+    mode: '0770'
+  with_items:
+    - /tmp/prometheus-{{ prometheus_version }}.linux-amd64/prometheus
+    - /tmp/prometheus-{{ prometheus_version }}.linux-amd64/promtool
+
+- name: Copy configs prometheus
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: /etc/prometheus/
+    remote_src: yes
+    owner: prometheus
+    group: prometheus
+    mode: '0774'
+  with_items:
+    - /tmp/prometheus-{{ prometheus_version }}.linux-amd64/consoles
+    - /tmp/prometheus-{{ prometheus_version }}.linux-amd64/console_libraries
+    - /tmp/prometheus-{{ prometheus_version }}.linux-amd64/prometheus.yml
+
+- name: Remove tmp package files
+  ansible.builtin.file:
+    path: /tmp/prometheus-{{ prometheus_version }}.linux-amd64
+    state: absent
+
+- name: Create service file prometheus
+  ansible.builtin.template:
+    src: prometheus.service.j2
+    dest: /etc/systemd/system/prometheus.service
+    owner: prometheus
+    group: prometheus
+    mode: 0644
+  notify: 
+  - Daemon reload
+  - Start and enable prometheus
+
+- name: flush handlers
+  ansible.builtin.meta: flush_handlers
+
+- name: Get prometheus status
+  ansible.builtin.uri:
+    url: http://localhost:9090/-/healthy
+    return_content: yes
+  register: prometheus_status
+
+- name: Show prometheus status
+  debug:
+    msg: "{{ prometheus_status.content }}"

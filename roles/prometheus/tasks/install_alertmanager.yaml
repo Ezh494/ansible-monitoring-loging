@@ -1,0 +1,86 @@
+- name: Create group "alertmanager"
+  ansible.builtin.group:
+    name: alertmanager
+    state: present
+    system: true
+
+- name: "Create user alertmanager"
+  ansible.builtin.user:
+    name: alertmanager
+    create_home: false
+    system: true
+    shell: /sbin/nologin
+    groups: alertmanager
+    state: present
+
+- name: Create a directory /etc/alertmanager
+  ansible.builtin.file:
+    path: /etc/alertmanager
+    state: directory
+    owner: alertmanager
+    group: alertmanager
+    mode: '0770'
+    
+- name: Create a directory /var/lib/alertmanager
+  ansible.builtin.file:
+    path: /var/lib/alertmanager
+    state: directory
+    owner: alertmanager
+    group: alertmanager
+    mode: '0770'
+
+- name: Get and unarchive prometheus package
+  ansible.builtin.unarchive:
+    src: "https://github.com/prometheus/alertmanager/releases/download/v{{ alertmanager_version }}/alertmanager-{{ alertmanager_version }}.linux-amd64.tar.gz"
+    dest: /tmp
+    remote_src: yes
+
+- name: Copy bin alertmanager
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: /usr/local/bin/
+    remote_src: yes
+    owner: alertmanager
+    group: alertmanager
+    mode: '0770'
+  with_items:
+    - /tmp/alertmanager-{{ alertmanager_version }}.linux-amd64/amtool
+    - /tmp/alertmanager-{{ alertmanager_version }}.linux-amd64/alertmanager
+
+- name: Copy config alertmanager
+  ansible.builtin.copy:
+    src: "/tmp/alertmanager-{{ alertmanager_version }}.linux-amd64/alertmanager.yml"
+    dest: /etc/alertmanager/
+    remote_src: yes
+    owner: alertmanager
+    group: alertmanager
+    mode: '0770'
+
+- name: Remove tmp package files
+  ansible.builtin.file:
+    path: /tmp/alertmanager-{{ alertmanager_version }}.linux-amd64
+    state: absent
+
+- name: Create service file alertmanager
+  ansible.builtin.template:
+    src: alertmanager.service.j2
+    dest: /etc/systemd/system/alertmanager.service
+    owner: alertmanager
+    group: alertmanager
+    mode: 0644
+  notify: 
+  - Daemon reload
+  - Start and enable alertmanager
+
+- name: flush handlers
+  ansible.builtin.meta: flush_handlers
+
+- name: Get alertmanager status
+  ansible.builtin.uri:
+    url: http://localhost:9093/-/healthy
+    return_content: yes
+  register: alertmanager_status
+
+- name: Show alertmanager status
+  debug:
+    msg: alertmanager_status.results

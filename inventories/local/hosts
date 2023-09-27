@@ -1,0 +1,30 @@
+all:
+  hosts:
+  vars:
+    #ansible_user: root
+    #ansible_password: test
+  children:
+    prometheus:
+      hosts:
+        prometheus01:
+          ansible_host: 192.168.31.144
+    grafana:
+      hosts:
+        grafana01:
+          ansible_host: 192.168.31.144    
+    elasticsearch:
+      hosts:
+        elasticsearch01:
+          ansible_host: 192.168.31.144
+    kibana:
+      hosts:
+        kibana01:
+          ansible_host: 192.168.31.144
+    fluent-bit:
+      hosts:
+        fluent-bit01:
+          ansible_host: 192.168.31.144
+    node_exporter:
+      hosts:
+        node_exporter01:
+          ansible_host: 192.168.31.144

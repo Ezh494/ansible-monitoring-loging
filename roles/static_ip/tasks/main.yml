@@ -1,0 +1,38 @@
+  - name: Gather facts localhost
+    ansible.builtin.gather_facts:
+    delegate_to: 127.0.0.1
+    delegate_facts: true
+    register: facts_localhost
+
+  - name: Print localhost os_family
+    ansible.builtin.debug:
+      msg:
+      - "{{ facts_localhost['ansible_facts']['ansible_os_family'] }}"
+    delegate_to: 127.0.0.1
+    run_once: true
+
+  - name: Install netaddr on Ansible host_address
+    ansible.builtin.apt:
+      name: python-netaddr
+      state: present
+    delegate_to: 127.0.0.1
+    become: true
+    when: facts_localhost['ansible_facts']['ansible_os_family'] == "Debian"
+    run_once: true
+
+  - name: Install netaddr on Ansible host_address
+    ansible.builtin.yum:
+      name: python-netaddr
+      state: present
+    delegate_to: 127.0.0.1
+    become: true
+    when: facts_localhost['ansible_facts']['ansible_os_family'] == "RedHat"
+    run_once: true
+  
+  - name: Check DHCP status
+    shell: "ip a | grep dynamic | wc -l"
+    register: host_dhcp
+  
+  - name: Configuration network
+    include_tasks: "network_configuration.yml"
+    when: host_dhcp.stdout == "1"

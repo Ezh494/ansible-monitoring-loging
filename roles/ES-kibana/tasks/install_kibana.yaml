@@ -1,0 +1,38 @@
+- name: Add GPG keys elasticsearch
+  ansible.builtin.shell:
+    cmd: curl -fsSL https://artifacts.elastic.co/GPG-KEY-elasticsearch |sudo gpg --dearmor --yes -o /usr/share/keyrings/elastic.gpg
+
+- name: Install .deb package kibana
+  ansible.builtin.apt:
+    deb: https://artifacts.elastic.co/downloads/kibana/kibana-{{ kibana_version}}-amd64.deb
+  notify: 
+  - Daemon reload
+  - Start and enable kibana
+
+- name: Update kibana config
+  ansible.builtin.template:
+    src: kibana.yml.j2
+    dest: /etc/kibana/kibana.yml
+    owner: kibana
+    group: kibana
+    mode: 0644
+  notify: 
+  - Daemon reload
+  - Start and enable kibana
+
+- name: flush handlers
+  ansible.builtin.meta: flush_handlers
+
+- name: Get kibana status
+  ansible.builtin.uri:
+    url: http://localhost:5601/api/status
+    return_content: yes
+  register: kibana_status_json
+
+- name: Get kibana status json
+  set_fact:
+    kibana_status: "{{ kibana_status_json.content | from_json }}"
+
+- name: Show kibana status
+  debug:
+    msg: "{{ kibana_status.status.overall }}"

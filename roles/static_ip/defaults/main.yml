@@ -1,0 +1,9 @@
+global_nameservers:
+  - 8.8.8.8
+  - 8.8.7.7
+
+office_nameservers:
+  - 10.1.1.1
+  - 10.2.2.2
+  - 10.3.3.3
+  - 10.4.4.4

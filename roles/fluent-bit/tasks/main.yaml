@@ -1,0 +1,74 @@
+- name: Check fluent-bit.service exists
+  stat:
+    path: /lib/systemd/system/fluent-bit.service
+  register: fluentbit_result
+
+- name: Create a directory /usr/share/keyrings/
+  ansible.builtin.file:
+    path: /usr/share/keyrings/
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  when: not fluentbit_result.stat.exists
+
+- name: Add GPG keys fluent-bit
+  ansible.builtin.shell: curl https://packages.fluentbit.io/fluentbit.key | gpg --dearmor > /usr/share/keyrings/fluentbit-keyring.gpg
+  register: GPG_keys
+  when: not fluentbit_result.stat.exists
+
+- name: Show verify gpg key
+  debug:
+    msg: "{{ GPG_keys.stdout }}"
+  when: not fluentbit_result.stat.exists
+
+- name: Add latest stable repository fluent-bit
+  shell: echo "deb [signed-by=/usr/share/keyrings/fluentbit-keyring.gpg] https://packages.fluentbit.io/ubuntu/$(lsb_release -cs) $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/fluent-bit.list
+  when: not fluentbit_result.stat.exists
+
+- name: Install fluent-bit
+  ansible.builtin.apt:
+   name: "fluent-bit={{ fluentbit_version }}*"
+   state: present
+   update_cache: yes
+  notify: 
+  - Daemon reload
+  - Start and enable fluent-bit
+  when: not fluentbit_result.stat.exists
+
+- name: flush handlers
+  ansible.builtin.meta: flush_handlers
+  when: not fluentbit_result.stat.exists
+
+- name: Update plugins fluent-bit
+  ansible.builtin.template:
+    src: plugins.conf.j2
+    dest: /etc/fluent-bit/plugins.conf
+    owner: root
+    group: root
+    mode: 0644
+  notify: 
+  - Restart fluent-bit
+
+- name: Update parsers fluent-bit
+  ansible.builtin.template:
+    src: parsers.conf.j2
+    dest: /etc/fluent-bit/parsers.conf
+    owner: root
+    group: root
+    mode: 0644
+  notify: 
+  - Restart fluent-bit
+
+- name: Update config fluent-bit
+  ansible.builtin.template:
+    src: fluent-bit.conf.j2
+    dest: /etc/fluent-bit/fluent-bit.conf
+    owner: root
+    group: root
+    mode: 0644
+  notify: 
+  - Restart fluent-bit
+
+- name: flush handlers
+  ansible.builtin.meta: flush_handlers

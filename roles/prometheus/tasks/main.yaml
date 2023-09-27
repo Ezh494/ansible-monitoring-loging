@@ -1,0 +1,138 @@
+- name: Check prometheus.service exists
+  stat:
+    path: /etc/systemd/system/prometheus.service
+  register: prometheus_result
+
+- name: Check alertmanager.service exists
+  stat:
+    path: /etc/systemd/system/alertmanager.service
+  register: alertmanager_result
+
+- name: Check grafana.service exists
+  stat:
+    path: /lib/systemd/system/grafana-server.service
+  register: grafana_result
+  when:
+  - inventory_hostname in groups["grafana"]
+
+- name: Installation prometheus
+  include_tasks: "install_prometheus.yaml"
+  when: not prometheus_result.stat.exists or prometheus_update == true
+
+- name: Installation alertmanager
+  include_tasks: "install_alertmanager.yaml"
+  when: 
+  - not alertmanager_result.stat.exists or alertmanager_update == true
+  - alertmanager_install == true
+
+- name: Installation grafana
+  include_tasks: "install_grafana.yaml"
+  when: 
+  - inventory_hostname in groups["grafana"]
+  - not grafana_result.stat.exists or grafana_update == true
+  - grafana_install == true
+
+- name: Installation nginx
+  include_tasks: "install_nginx.yaml"
+  when: >
+    (not prometheus_result.stat.exists and prometheus_nginx_install == true) 
+    or (not alertmanager_result.stat.exists and alertmanager_nginx_install == true)
+    or (inventory_hostname in groups["grafana"] and not grafana_result.stat.exists and grafana_nginx_install == true)
+
+- name: Update prometheus config
+  ansible.builtin.template:
+    src: prometheus.yml.j2
+    dest: /etc/prometheus/prometheus.yml
+    owner: prometheus
+    group: prometheus
+    mode: 0770
+  notify: 
+  - Restart prometheus
+
+- name: flush handlers
+  ansible.builtin.meta: flush_handlers
+
+- name: Get prometheus status
+  ansible.builtin.uri:
+    url: http://localhost:9090/-/healthy
+    return_content: yes
+  register: prometheus_status
+
+- name: Show prometheus status
+  debug:
+    msg: "{{ prometheus_status.content }}"
+
+- name: Update alertmanager config
+  ansible.builtin.template:
+    src: alertmanager.yml.j2
+    dest: /etc/alertmanager/alertmanager.yml
+    owner: alertmanager
+    group: alertmanager
+    mode: 0770
+  notify: 
+  - Restart alertmanager
+  when: 
+  - alertmanager_install == true
+
+- name: flush handlers
+  ansible.builtin.meta: flush_handlers
+
+- name: Get alertmanager status
+  ansible.builtin.uri:
+    url: http://localhost:9093/-/healthy
+    return_content: yes
+  register: alertmanager_status
+  when: 
+  - alertmanager_install == true
+
+- name: Show alertmanager status
+  debug:
+    msg: "{{ alertmanager_status.content }}"
+  when: 
+  - alertmanager_install == true
+
+- name: Update grafana datasources
+  ansible.builtin.template:
+    src: grafana.datasources.yaml.j2
+    dest: /etc/grafana/provisioning/datasources/datasources.yml
+    owner: root
+    group: grafana
+    mode: 0640
+  notify: 
+  - Restart grafana
+  when: 
+  - inventory_hostname in groups["grafana"]
+  - grafana_install == true
+
+- name: Update grafana dashboards
+  ansible.builtin.template:
+    src: grafana.dashboards.yaml.j2
+    dest: /etc/grafana/provisioning/dashboards/dashboards.yml
+    owner: root
+    group: grafana
+    mode: 0640
+  notify: 
+  - Restart grafana
+  when: 
+  - inventory_hostname in groups["grafana"]
+  - grafana_install == true
+
+- name: flush handlers
+  ansible.builtin.meta: flush_handlers
+
+- name: Get grafana status
+  ansible.builtin.uri:
+    url: http://localhost:3000/api/health
+    return_content: yes
+  register: grafana_status
+  when: 
+  - inventory_hostname in groups["grafana"]
+  - grafana_install == true
+
+- name: Show grafana status
+  debug:
+    msg: "{{ grafana_status.content }}"
+  when: 
+  - inventory_hostname in groups["grafana"]
+  - grafana_install == true
+

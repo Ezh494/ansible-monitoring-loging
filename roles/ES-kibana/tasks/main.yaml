@@ -1,0 +1,40 @@
+- name: Check elasticsearch.service exists
+  stat:
+    path: /lib/systemd/system/elasticsearch.service
+  register: elasticsearch_result
+  when: 
+  - inventory_hostname in groups["elasticsearch"]
+
+- name: Check kibana.service exists
+  stat:
+    path: /lib/systemd/system/kibana.service
+  register: kibana_result
+  when: 
+  - inventory_hostname in groups["kibana"]
+
+- name: Installation elasticsearch standalone
+  include_tasks: "install_elasticsearch_standalone.yaml"
+  when: 
+  - inventory_hostname in groups["elasticsearch"]
+  - not elasticsearch_result.stat.exists
+  - elasticsearch_cluster == false
+
+- name: Installation elasticsearch cluster
+  include_tasks: "install_elasticsearch_cluster.yaml"
+  when: 
+  - inventory_hostname in groups["elasticsearch"]
+  - not elasticsearch_result.stat.exists
+  - elasticsearch_cluster == true
+
+- name: Installation kibana
+  include_tasks: "install_kibana.yaml"
+  when: 
+  - inventory_hostname in groups["kibana"]
+  - not kibana_result.stat.exists or kibana_update == true
+
+- name: Installation nginx
+  include_tasks: "install_nginx.yaml"
+  when: 
+  - inventory_hostname in groups["kibana"]
+  - not kibana_result.stat.exists
+  - kibana_nginx_install == true

@@ -1,0 +1,63 @@
+## Prometheus values
+prometheus_version: "2.45.0"
+prometheus_nginx_install: true
+prometheus_nginx_version: 1.18.0
+prometheus_nginx_domain: prometheus.test.co
+prometheus_update: false
+prometheus_scrape_interval: 15s
+prometheus_evaluation_interval: 15s
+prometheus_scrape_timeout: 10s
+prometheus_remote_write: []
+prometheus_remote_read: []
+prometheus_alertmanager_target: "- localhost:9093"
+prometheus_rule_files: []
+  # - "first_rules.yml"""
+  # - "second_rules.yml"
+prometheus_scrape_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+  - job_name: "server"
+    static_configs:
+      - targets: ["10.80.31.144:9100"]  
+
+## Alertmanager values
+alertmanager_install: true
+alertmanager_version: "0.26.0"
+alertmanager_nginx_install: true
+alertmanager_nginx_version: 1.18.0
+alertmanager_nginx_domain: alertmanager.test.co
+alertmanager_update: false
+alertmanager_global: [] #|
+ # The smarthost and SMTP sender used for mail notifications.
+   # smtp_smarthost: 'localhost:25'
+   # smtp_from: 'alertmanager@example.org'
+   # smtp_auth_username: 'alertmanager'
+   # smtp_auth_password: 'password''
+alertmanager_templates: []
+# - '/etc/alertmanager/template/*.tmpl'
+
+alertmanager_group_by: "['alertname']"
+alertmanager_group_wait: 30s
+alertmanager_group_interval: 5m
+alertmanager_repeat_interval: 1h
+alertmanager_receiver: "'web.hook'"
+alertmanager_receivers:
+  - name: 'web.hook'
+    webhook_configs:
+      - url: 'http://127.0.0.1:5001/'
+
+alertmanager_inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'dev', 'instance']
+
+## Grafana values
+grafana_install: true
+grafana_version: "10.1.2"
+grafana_nginx_install: true
+grafana_nginx_version: 1.18.0
+grafana_nginx_domain: grafana.test.co
+grafana_update: false

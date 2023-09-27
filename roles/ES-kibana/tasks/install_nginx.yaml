@@ -1,0 +1,81 @@
+- name: Check nginx.service exists
+  stat:
+    path: /lib/systemd/system/nginx.service
+  register: nginx_result
+
+- name: Install prerequsites
+  ansible.builtin.apt:
+   name: "{{ item }}"
+   state: present
+   update_cache: yes
+  with_items:
+  - curl
+  - gnupg2
+  - ca-certificates
+  - lsb-release
+  - ubuntu-keyring
+  when: not nginx_result.stat.exists
+
+- name: Import the Nginx signing key
+  shell: wget -O- https://nginx.org/keys/nginx_signing.key | gpg --dearmor | tee /etc/apt/trusted.gpg.d/nginx.gpg > /dev/null
+  when: not nginx_result.stat.exists
+
+- name: Create a directory /root/.gnupg
+  ansible.builtin.file:
+    path: /root/.gnupg
+    state: directory
+    owner: root
+    group: root
+    mode: '0600'
+  when: not nginx_result.stat.exists
+
+- name: Get verify gpg key
+  shell: gpg --dry-run --quiet --import --import-options import-show /etc/apt/trusted.gpg.d/nginx.gpg
+  register: GPG_keys
+  when: not nginx_result.stat.exists
+
+- name: Show verify gpg key
+  debug:
+    msg: "{{ GPG_keys.stdout }}"
+  when: not nginx_result.stat.exists
+
+- name: Add latest stable repository NGINX
+  shell: echo "deb http://nginx.org/packages/ubuntu `lsb_release -cs` nginx" | tee /etc/apt/sources.list.d/nginx.list
+  when: not nginx_result.stat.exists
+
+- name: Install nginx
+  ansible.builtin.apt:
+   name: "nginx-core={{ kibana_nginx_version }}*"
+   state: present
+   update_cache: yes
+  notify: 
+  - Daemon reload
+  - Start and enable nginx
+  when: not nginx_result.stat.exists
+
+- name: flush handlers
+  ansible.builtin.meta: flush_handlers
+  when: not nginx_result.stat.exists
+
+- name: "Add kibana nginx config"
+  ansible.builtin.template:
+    src: kibana.nginx.conf.j2
+    dest: /etc/nginx/sites-available/kibana.conf
+    owner: root
+    group: root
+    mode: 0644
+  when: 
+  - kibana_nginx_install == true
+
+- name: Creating a symlink kibana nginx config
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/kibana.conf
+    dest: /etc/nginx/sites-enabled/kibana
+    state: link
+  when: 
+  - kibana_nginx_install == true
+  notify: 
+  - Restart nginx
+
+- name: flush handlers
+  ansible.builtin.meta: flush_handlers

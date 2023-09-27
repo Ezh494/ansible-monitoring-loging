@@ -1,0 +1,51 @@
+- name: Install prerequsites
+  ansible.builtin.apt:
+   name: "{{ item }}"
+   state: present
+   update_cache: yes
+  with_items:
+  - apt-transport-https
+  - adduser
+  - libfontconfig1
+  - musl
+  - software-properties-common
+  - wget
+
+- name: Create a directory /usr/share/keyrings/
+  ansible.builtin.file:
+    path: /usr/share/keyrings/
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Add GPG keys grafana
+  ansible.builtin.shell: wget -q -O - https://apt.grafana.com/gpg.key | gpg --dearmor | sudo tee /usr/share/keyrings/grafana.gpg > /dev/null
+  register: GPG_keys
+
+- name: Show verify gpg key
+  debug:
+    msg: "{{ GPG_keys.stdout }}"
+  when: not grafana_result.stat.exists
+
+- name: Install .deb package grafana
+  ansible.builtin.apt:
+    deb: "https://dl.grafana.com/oss/release/grafana_{{ grafana_version }}_amd64.deb"
+  notify: 
+  - Daemon reload
+  - Start and enable grafana
+
+- name: flush handlers
+  ansible.builtin.meta: flush_handlers
+
+- name: Get grafana status
+  ansible.builtin.uri:
+    url: http://localhost:3000/api/health
+    return_content: yes
+  register: grafana_status
+
+- name: Show grafana status
+  debug:
+    msg: "{{ grafana_status.content }}"
+
+
