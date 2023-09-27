@@ -82,12 +82,9 @@
     # storage.backlog.mem_limit 5M
 
 [INPUT]
-    name cpu
-    tag  cpu.local
-
-    # Read interval (sec) Default: 1
-    interval_sec 1
-
+    name systemd
+    tag  *
+	
 [INPUT]
     Name tail
     Path /var/log/nginx/access.log
