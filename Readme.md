@@ -1,8 +1,8 @@
 # Playbook for installation Monitoring and loging systems
 **This playbook has been tested only on Ubuntu 20+ system!!!**
 ## Roles information
-static-ip (optional)
-* Preparation servers - install statis IP address 
+static_ip (optional)
+* Preparation servers - install statis IP address (need add you DNS servers in the dafaults role)
 
 prometheus
 * prometheus

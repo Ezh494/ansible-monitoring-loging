@@ -13,12 +13,7 @@
   - name: Set nameserver fact
     set_fact:
       host_nameservers: "{{ global_nameservers }}"
-    when: "'192.168.' in (ansible_default_ipv4.network|default(ipv4_default_gateway.stdout))"
-
-  - name: Set nameserver fact
-    set_fact:
-      host_nameservers: "{{ office_nameservers }}"
-    when: "'10.' in (ansible_default_ipv4.network|default(ipv4_default_gateway.stdout))"
+    #when: "'192.168.' in (ansible_default_ipv4.network|default(ipv4_default_gateway.stdout))"
 
   - name: Print static apply configuration
     ansible.builtin.debug:
