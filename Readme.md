@@ -2,7 +2,7 @@
 **This playbook has been tested only on Ubuntu 20+ system!!!**
 ## Roles information
 static_ip (optional)
-* Preparation servers - install statis IP address (need add you DNS servers in the dafaults role)
+* Preparation servers - install statis IP address (need add you DNS servers in the defaults values role)
 
 prometheus
 * prometheus
