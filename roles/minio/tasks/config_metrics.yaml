@@ -1,0 +1,65 @@
+---
+- name: Check If Docker Is Installed
+  command: docker --version
+  register: docker_valid
+  ignore_errors: true
+
+- name: Add keys rep 
+  ansible.builtin.shell:
+    cmd: install -m 0755 -d /etc/apt/keyrings
+  when: docker_valid.failed
+
+- name: Add keys rep2
+  ansible.builtin.shell:
+    cmd: curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  when: docker_valid.failed
+
+- name: Add keys rep3
+  ansible.builtin.shell:
+    cmd: chmod a+r /etc/apt/keyrings/docker.gpg
+  when: docker_valid.failed
+
+- name: Add keys rep2
+  ansible.builtin.shell:
+    cmd: echo "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+         "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+         sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+  when: docker_valid.failed
+
+- name: Install docker
+  ansible.builtin.apt:
+    name: "{{ item }}"
+  with_items:
+  - docker-ce 
+  - docker-ce-cli 
+  - containerd.io 
+  - docker-buildx-plugin 
+  - docker-compose-plugin
+  when: docker_valid.failed
+
+- name: Create folder /etc/minio
+  file:
+    path: /etc/minio
+    state: directory
+    owner: minio-user
+    group: minio-user
+    mode: '0644'
+
+- name: Copy config prometheus
+  ansible.builtin.template:
+    src: minio.prometheus.j2
+    dest: /etc/minio/prometheus.yml
+    owner: minio-user
+    group: minio-user
+    mode: 0644
+
+- name: Create volume prometheus-data
+  ansible.builtin.shell:
+    cmd: docker volume create prometheus-data
+
+- name: Start prometheus container
+  ansible.builtin.shell:
+    cmd: docker run  --name minio-prometheus-exporter -d -p 9090:9090 --restart=always -v /etc/minio/prometheus.yml:/etc/prometheus/prometheus.yml --volume prometheus-data:/prometheus prom/prometheus
+
+
+     

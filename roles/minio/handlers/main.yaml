@@ -1,0 +1,16 @@
+---
+- name: Start and enable service
+  ansible.builtin.service:
+    name: minio.service
+    state: started
+    enabled: yes
+
+- name: Restart minio
+  ansible.builtin.service:
+    name: minio.service
+    state: restarted
+  when: minio_result.stat.exists
+
+- name: Daemon reload
+  ansible.builtin.systemd:
+    daemon_reload: true

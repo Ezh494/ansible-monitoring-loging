@@ -1,0 +1,46 @@
+- name: Check zabbix-agent exists
+  stat:
+    path: /etc/zabbix/
+  register: zabbix_result
+
+- name: Create folder /var/lib/zabbix/.mc/certs/CAs
+  file:
+    path: /var/lib/zabbix/.mc/certs/CAs
+    state: directory
+    owner: zabbix
+    recurse: yes
+  when: 
+  - not zabbix_result.stat.exists
+  - inventory_hostname in groups["minio-master"]
+  run_once: true
+
+- name: Find zabbix_agent conf dir
+  ansible.builtin.find:
+    paths: /etc/zabbix
+    patterns: 'zabbix_agent'
+    recurse: no
+    file_type: directory
+    use_regex: yes
+  register: zabbix_config_dir
+  when: 
+  - not zabbix_result.stat.exists
+  - inventory_hostname in groups["minio-master"]
+
+- name: Copy config zabbix-agent
+  ansible.builtin.template:
+    src: minio.zabbix.j2
+    dest: zabbix_config_dir.files[0].path/minio.conf
+    owner: zabbix
+    group: zabbix
+    mode: 0644
+  when: 
+  - not zabbix_result.stat.exists
+  - inventory_hostname in groups["minio-master"]
+
+- name: Create alias minio
+  ansible.builtin.shell:
+    cmd: sudo su -c "mc alias set {{ minio_name }} https://{{ minio_name }}.{{ your_domain }}:9000 {{ minio_admin }} {{ minio_admin_pass }}" -s /bin/sh zabbix
+  when:
+  - not zabbix_result.stat.exists
+  - inventory_hostname in groups["minio-master"]
+  run_once: true

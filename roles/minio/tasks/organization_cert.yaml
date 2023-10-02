@@ -1,0 +1,64 @@
+---
+- name: Create directory cert
+  ansible.builtin.file:
+    state: directory
+    path: /home/minio-user/.minio/certs/CAs
+    owner: minio-user
+    group: minio-user
+    recurse: true
+
+- name: Find CRT cert
+  ansible.builtin.find:
+    paths: "{{ role_path }}/files/minio"
+    file_type: file
+    use_regex: false
+    patterns:
+    - '*.crt'
+  register: crt_result
+  delegate_to: localhost
+  run_once: true
+
+- debug:
+    msg: "{{ crt_result.files }}"
+
+- name: Find KEY cert
+  ansible.builtin.find:
+    paths: "{{ role_path }}/files/minio"
+    file_type: file
+    use_regex: false
+    patterns:
+    - '*.key'
+  register: key_result
+  delegate_to: localhost
+  run_once: true
+
+- debug:
+    msg: "{{ key_result.files }}"
+
+- name: Copy main certificate CRT
+  ansible.builtin.copy:
+    src: "{{ item.path }}"
+    dest: "/home/minio-user/.minio/certs/public.crt"
+    owner: minio-user
+    group: minio-user
+  with_items:
+  - "{{ crt_result.files }}"
+
+- name: Copy main certificate KEY
+  ansible.builtin.copy:
+    src: "{{ item.path }}"
+    dest: "/home/minio-user/.minio/certs/private.key"
+    owner: minio-user
+    group: minio-user
+  with_items:
+  - "{{ key_result.files }}"
+
+- name: Copy CAs certificate
+  ansible.builtin.copy:
+    src: "{{ item.path }}"
+    dest: "/home/minio-user/.minio/certs/CAs/public.crt"
+    owner: minio-user
+    group: minio-user
+  with_items:
+  - "{{ crt_result.files }}"
+  notify: Restart minio

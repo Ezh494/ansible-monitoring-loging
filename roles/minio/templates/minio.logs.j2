@@ -1,0 +1,2 @@
+mc alias set {{ minio_name }} https://{{ minio_name }}.{{ your_domain }}:9000 {{ minio_admin }} {{ minio_admin_pass }}
+mc admin trace --call s3 {{ minio_name }} >> /var/log/minio/minio.log

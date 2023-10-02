@@ -1,0 +1,4 @@
+##MinIO
+##
+UserParameter=minio.ping, /usr/local/bin/mc ls {{ minio_name }} --json
+UserParameter=minio.get_status_variables[*], /usr/local/bin/mc admin info {{ minio_name }} --json

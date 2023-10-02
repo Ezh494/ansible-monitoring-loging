@@ -1,0 +1,76 @@
+---
+- name: Check old installation minio-server
+  stat:
+    path: /usr/local/bin/minio
+  register: stat_result_server
+
+- name: Check old installation minio-server
+  stat:
+    path: /usr/local/bin/mc
+  register: stat_result_client
+
+- name: Change '/usr/local/bin/' permissions
+  ansible.builtin.file:
+    path: /usr/local/bin/
+    owner: minio-user
+    group: minio-user
+    mode: '0777'
+
+- name: Install minio
+  ansible.builtin.get_url:
+    url: https://dl.min.io/server/minio/release/linux-amd64/minio
+    dest: /usr/local/bin/
+    mode: '0755'
+  when: not stat_result_server.stat.exists
+
+- name: Install minio-client
+  ansible.builtin.get_url:
+    url: https://dl.min.io/client/mc/release/linux-amd64/mc
+    dest: /usr/local/bin/
+    mode: '0755'
+  when:
+  - inventory_hostname in groups["minio-master"]
+  - not stat_result_client.stat.exists
+
+- name: Create group minio-user
+  group:
+    name: "minio-user"
+    state: present
+
+- name: Pause for 1 minutes to refresh list groups
+  ansible.builtin.pause:
+    minutes: 1
+
+- name: Create User minio-user
+  user:
+    name: "minio-user"
+    state: present
+    group: "minio-user"
+  become: true
+
+- name: Change minio-file ownership, group and permissions
+  ansible.builtin.file:
+    path: "/minio/data{{ item }}"
+    owner: minio-user
+    group: minio-user
+  with_sequence:
+  - "1-4"
+
+- name: Copy enviroment file minio
+  ansible.builtin.template:
+    src: minio.env.j2
+    dest: /etc/default/minio
+    owner: minio-user
+    group: minio-user
+    mode: 0644
+
+- name: Copy service file minio
+  ansible.builtin.template:
+    src: minio.service.j2
+    dest: /etc/systemd/system/minio.service
+    owner: minio-user
+    group: minio-user
+    mode: 0644
+  notify: 
+  - Daemon reload
+  - Start and enable service

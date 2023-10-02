@@ -1,0 +1,78 @@
+---
+- name: Check If Docker Is Installed
+  command: docker --version
+  register: docker_valid
+  ignore_errors: true
+
+- name: Add keys rep 
+  ansible.builtin.shell:
+    cmd: install -m 0755 -d /etc/apt/keyrings
+  when: docker_valid.failed
+
+- name: Add keys rep2
+  ansible.builtin.shell:
+    cmd: curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  when: docker_valid.failed
+
+- name: Add keys rep3
+  ansible.builtin.shell:
+    cmd: chmod a+r /etc/apt/keyrings/docker.gpg
+  when: docker_valid.failed
+
+- name: Add keys rep2
+  ansible.builtin.shell:
+    cmd: echo "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+         "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+         sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+  when: docker_valid.failed
+
+- name: Install docker
+  ansible.builtin.apt:
+    name: "{{ item }}"
+  with_items:
+  - docker-ce 
+  - docker-ce-cli 
+  - containerd.io 
+  - docker-buildx-plugin 
+  - docker-compose-plugin
+  when: docker_valid.failed
+
+- name: Create folder /etc/minio
+  file:
+    path: /etc/minio
+    state: directory
+    owner: minio-user
+    group: minio-user
+    mode: '0644'
+
+- name: Copy exporter script
+  ansible.builtin.template:
+    src: minio.logs.j2
+    dest: /etc/minio/minio_log_export.sh
+    owner: minio-user
+    group: minio-user
+    mode: 0644
+
+- name: Copy Dockerfile logs-exporter
+  copy:
+    src: files/Dockerfile-log
+    dest: /etc/minio/Dockerfile
+    owner: minio-user
+    group: minio-user
+  
+- name: Build image logs-exporter
+  ansible.builtin.shell:
+    cmd: docker build /etc/minio/. -t minio-logs-exporter:latest
+
+- name: Create folder /var/log/minio
+  file:
+    path: /var/log/minio
+    state: directory
+    owner: root
+    group: root
+    mode: '0766'
+
+- name: Start logs_exporter container
+  ansible.builtin.shell:
+    cmd: docker run --name minio-logs-exporter -d --restart=always -v /usr/local/bin/mc:/usr/local/bin/mc -v /home/minio-user/.minio:/root/.mc -v /var/log/minio:/var/log/minio minio-logs-exporter
+    

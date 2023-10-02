@@ -1,0 +1,13 @@
+minio_name: minio-test
+minio_pool_count: 2
+your_domain: mlg.ru
+minio_admin: minio_admin
+minio_admin_pass: 9Sn9DpeGIPHu
+minio_update_tls: false
+minio_self_signed_cert: true
+minio_prometheus_install: true
+minio_zabbix_config_install: true
+minio_log_exporter_install: true
+
+#minio_server_count: 2
+#minio_disk_count: 4

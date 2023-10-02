@@ -1,0 +1,75 @@
+---
+- name: Check minio.service exists
+  stat:
+    path: /etc/systemd/system/minio.service
+  register: minio_result
+
+- name: Generation Self-signed certificate
+  include_tasks: "generation_cert.yaml"
+  when:
+  - minio_update_tls  == true
+  - minio_self_signed_cert  == true
+
+- name: Generation Organization certificate
+  include_tasks: "organization_cert.yaml"
+  when:
+  - minio_update_tls  == true
+  - minio_self_signed_cert == false
+
+- name: Installation minio
+  include_tasks: "install_minio.yaml"
+  when: not minio_result.stat.exists
+
+- name: Configuration metrics
+  include_tasks: "config_metrics.yaml"
+  when: 
+  - inventory_hostname in groups["minio-master"]
+  - not minio_result.stat.exists
+  - minio_prometheus_install  == true
+
+- name: Create alias minio
+  ansible.builtin.shell:
+    cmd: /usr/local/bin/mc alias set {{ minio_name }} https://{{ minio_name }}.{{ your_domain }}:9000 {{ minio_admin }} {{ minio_admin_pass }}
+  when: 
+  - inventory_hostname in groups["minio-master"]
+  - not minio_result.stat.exists
+  run_once: true
+
+- name: Create test backet
+  ansible.builtin.shell:
+    cmd: mc mb -p {{ minio_name }}/test-backet --region=ru-central-1
+  when:
+  - inventory_hostname in groups["minio-master"]
+  - not minio_result.stat.exists
+  run_once: true
+
+- name: Get MiniO prometheus config
+  ansible.builtin.shell:
+    cmd: mc admin prometheus generate minio-test --public
+  run_once: true
+  register: prometheus_conf
+  when:
+  - inventory_hostname in groups["minio-master"]
+  - not minio_result.stat.exists
+
+- name: Show MiniO prometheus config
+  debug:
+    msg: prometheus_conf
+  run_once: true
+  when:
+  - not minio_result.stat.exists
+
+- name: Configuration zabbix
+  include_tasks: "config_zabbix.yaml"
+  when: 
+  - inventory_hostname in groups["minio-master"]
+  - not minio_result.stat.exists
+  - minio_zabbix_config_install  == true
+
+- name: Configuration logs
+  include_tasks: "config_logs.yaml"
+  when: 
+  - inventory_hostname in groups["minio-master"]
+  - not minio_result.stat.exists
+  - minio_log_exporter_install  == true
+    

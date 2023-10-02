@@ -1,0 +1,67 @@
+---
+- name: Gather facts localhost
+  ansible.builtin.gather_facts:
+  delegate_to: 127.0.0.1
+  register: facts_localhost
+
+- name: Install certgen
+  yum:
+    name: /{{ role_path }}/files/certgen_1.2.1_linux_amd64.rpm
+    state: present
+  delegate_to: localhost
+  when:
+  - facts_localhost['ansible_facts']['ansible_os_family'] == "RedHat"
+  - inventory_hostname  == 'minio01'
+
+- name: Install certgen
+  apt:
+    deb: /{{ role_path }}/files/certgen_1.2.1_linux_amd64.deb
+  delegate_to: localhost
+  when:
+  - facts_localhost['ansible_facts']['ansible_os_family'] == "Debian"
+  - inventory_hostname  == 'minio01'
+
+- name: Create certs dir
+  file:
+    path: "{{ role_path }}/files/{{ inventory_hostname }}"
+    state: directory
+  delegate_to: localhost
+
+- name: Generate certificate
+  ansible.builtin.shell:
+    cmd: certgen -host "localhost,{{ minio_name }}.{{ your_domain }},{{ minio_name }}{{ inventory_hostname | regex_replace('[^0-9]','') }}.{{ your_domain }}"
+    chdir: "{{ role_path }}/files/{{ inventory_hostname }}"
+  delegate_to: localhost
+  register: cert_info
+
+- name: "Show cert info"
+  debug:
+    msg: "{{ cert_info.stdout_lines }}"
+
+- name: Create directory cert
+  ansible.builtin.file:
+    state: directory
+    path: /home/minio-user/.minio/certs/CAs
+    owner: minio-user
+    group: minio-user
+    recurse: true
+
+- name: Copy main certificate
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: /home/minio-user/.minio/certs/
+    owner: minio-user
+    group: minio-user
+  with_fileglob:
+  - "files/minio*"
+
+- name: Copy CAs certificate
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "/home/minio-user/.minio/certs/CAs/public{{ ansible_loop.index }}.crt"
+    owner: minio-user
+    group: minio-user
+  with_sequence: start=1 end={{ ansible_play_hosts | length }} format=files/{{ inventory_hostname | regex_replace('[^a-zA-Z]') }}%02d/public.crt"
+  loop_control:
+    extended: true
+  notify: Restart minio

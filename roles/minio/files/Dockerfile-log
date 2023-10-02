@@ -1,0 +1,7 @@
+FROM busybox
+
+WORKDIR /minio
+
+COPY minio_log_export.sh .
+
+ENTRYPOINT ["sh","minio_log_export.sh"]

@@ -1,0 +1,99 @@
+---
+- name: "Make Data directory"
+  file:
+    path: /minio/data{{ item }}
+    state: directory
+    mode: '0755'
+  with_sequence:
+  - "1-4"
+
+#- name: get device name
+#  set_fact:
+#    device_info: "{{ device_info|default([]) + [ { 'name': item.0.key, 'label': item.1 } ] }}"
+#  with_together:
+#  - "{{ ansible_devices }}"
+# # - test: { 'DISK01', 'DISK02', 'DISK03', 'DISK04'}
+
+##- name: get device name
+##  set_fact:
+##    device_name: "{{ item.key }}"
+##  no_log: True
+##  with_dict: "{{ ansible_devices }}"
+##  when: "'cloudimg-rootfs' not in item.key"
+##
+##
+##- name: msg device
+##  debug:
+##    msg: {{ device_name }}
+##
+##
+##- name: "Show disk info"
+##  debug:
+##    msg: "{{ ansible_mounts }}"
+##
+##
+##- name: get device name
+##  set_fact:
+##    device.name: "{{ device_name|default([]) + [ item.key ] }}"
+##    device.label: "test"
+##  no_log: True
+##  with_dict: "{{ ansible_devices }}"
+##  when:
+##  - not item is search("cloudimg-rootfs")
+##  - "item.key.startswith('sd')"
+##
+##- name: msg device
+##  debug:
+##    msg: "{{ device_name }}"
+
+#- name: "Format Data disks to XFS"
+#  community.general.filesystem:
+ #   fstype: xfs
+ #   dev: {{ item.device }}
+ ## - "{{ ansible_mounts.device }}"
+
+- name: msg device
+  debug:
+    msg:
+    - "{{ ansible_mounts }}"
+  
+- name: "Format Data disks to XFS"
+  community.general.filesystem:
+    fstype: xfs
+    dev: /dev/{{ item.letter }}
+    opts: -L {{ item.label }}
+  with_items: 
+  - letter: sdb
+    label: DISK1
+  - letter: sdc
+    label: DISK2
+  - letter: sdd
+    label: DISK3
+  - letter: sde
+    label: DISK4
+  when: not item.label in "{{ ansible_devices }}"
+  
+- name: "Add mount path in fstab"
+  blockinfile:
+    path: /etc/fstab
+    block: |
+      LABEL=DISK1      /minio/data1     xfs     defaults,noatime  0       2
+      LABEL=DISK2      /minio/data2     xfs     defaults,noatime  0       2
+      LABEL=DISK3      /minio/data3     xfs     defaults,noatime  0       2
+      LABEL=DISK4      /minio/data4     xfs     defaults,noatime  0       2
+  notify: Restart node
+  when: not item.label in "{{ ansible_devices }}"
+
+- name: Force handler
+  ansible.builtin.meta: flush_handlers
+
+- name: "Check mount"
+  shell: "df -Th"
+  become: true
+  register: info_disk
+
+- name: "Show disk info"
+  debug:
+    msg: "{{ info_disk.stdout_lines }}"
+
+    
